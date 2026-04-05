@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Memory Card Game - 5 Players</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #111;
+      color: white;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h2 {
+      margin-top: 10px;
+      margin-bottom: 15px;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      background: orange;
+      color: black;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 15px;
+    }
+
+    #turn {
+      font-size: 22px;
+      margin: 15px 0;
+      color: gold;
+      font-weight: bold;
+    }
+
+    #win {
+      display: none;
+      font-size: 24px;
+      margin: 15px 0;
+      color: lightgreen;
+      font-weight: bold;
+    }
+
+    .scoreboard {
+      max-width: 700px;
+      margin: 20px auto;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    .player-box {
+      background: #222;
+      border: 2px solid #444;
+      border-radius: 10px;
+      padding: 10px;
+      transition: 0.3s;
+    }
+
+    .player-box.active {
+      border-color: orange;
+      box-shadow: 0 0 12px orange;
+      transform: scale(1.03);
+    }
+
+    .player-name {
+      font-weight: bold;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+
+    .player-score {
+      font-size: 22px;
+      color: lightgreen;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      max-width: 900px;
+      margin: 20px auto;
+      padding: 10px;
+    }
+
+    .card {
+      aspect-ratio: 1 / 1;
+      background: #333;
+      border-radius: 12px;
+      cursor: pointer;
+      overflow: hidden;
+      position: relative;
+      border: 2px solid #444;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      transition: transform 0.2s;
+    }
+
+    .card:hover {
+      transform: scale(1.03);
+    }
+
+    .card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .card .back {
+      font-size: 32px;
+      color: white;
+      font-weight: bold;
+    }
+
+    .card.flipped img,
+    .card.matched img {
+      display: block;
+    }
+
+    .card.flipped .back,
+    .card.matched .back {
+      display: none;
+    }
+
+    .card.matched {
+      border-color: lightgreen;
+      box-shadow: 0 0 10px lightgreen;
+      cursor: default;
+    }
+
+    @media (max-width: 768px) {
+      .scoreboard {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🧠 Memory Card Game - 5 Players</h2>
+  <button onclick="startGame()">Restart</button>
+
+  <div id="turn">دور اللاعب 1</div>
+
+  <div class="scoreboard" id="scoreboard"></div>
+
+  <div id="win"></div>
+  <div class="grid" id="grid"></div>
+
+  <script>
+    const uniqueImages = [
+      "images (2).jfif",
+      "images.jfif",
+      "images (1).jfif",
+      "download.jfif",
+      "download (4).jfif",
+      "download (3).jfif",
+      "download (2).jfif",
+      "download (1).jfif",
+      "hqdefault.jpg"
+    ];
+
+    const totalPlayers = 5;
+    let scores = new Array(totalPlayers).fill(0);
+    let currentPlayer = 0;
+
+    let firstCard = null;
+    let secondCard = null;
+    let lockBoard = false;
+    let matches = 0;
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function renderScoreboard() {
+      const scoreboard = document.getElementById("scoreboard");
+      scoreboard.innerHTML = "";
+
+      for (let i = 0; i < totalPlayers; i++) {
+        const box = document.createElement("div");
+        box.className = "player-box" + (i === currentPlayer ? " active" : "");
+
+        box.innerHTML = `
+          <div class="player-name">اللاعب ${i + 1}</div>
+          <div class="player-score">${scores[i]}</div>
+        `;
+
+        scoreboard.appendChild(box);
+      }
+
+      document.getElementById("turn").textContent = `دور اللاعب ${currentPlayer + 1}`;
+    }
+
+    function nextPlayer() {
+      currentPlayer = (currentPlayer + 1) % totalPlayers;
+      renderScoreboard();
+    }
+
+    function startGame() {
+      const grid = document.getElementById("grid");
+      const winText = document.getElementById("win");
+
+      grid.innerHTML = "";
+      winText.style.display = "none";
+      winText.textContent = "";
+
+      scores = new Array(totalPlayers).fill(0);
+      currentPlayer = 0;
+
+      firstCard = null;
+      secondCard = null;
+      lockBoard = false;
+      matches = 0;
+
+      renderScoreboard();
+
+      const gameImages = shuffle([...uniqueImages, ...uniqueImages]);
+
+      gameImages.forEach((src) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.dataset.image = src;
+
+        const back = document.createElement("div");
+        back.className = "back";
+        back.textContent = "?";
+
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = "memory card";
+
+        card.appendChild(back);
+        card.appendChild(img);
+
+        card.addEventListener("click", () => flipCard(card));
+
+        grid.appendChild(card);
+      });
+    }
+
+    function flipCard(card) {
+      if (
+        lockBoard ||
+        card === firstCard ||
+        card.classList.contains("matched") ||
+        card.classList.contains("flipped")
+      ) {
+        return;
+      }
+
+      card.classList.add("flipped");
+
+      if (!firstCard) {
+        firstCard = card;
+        return;
+      }
+
+      secondCard = card;
+      lockBoard = true;
+
+      if (firstCard.dataset.image === secondCard.dataset.image) {
+        firstCard.classList.remove("flipped");
+        secondCard.classList.remove("flipped");
+
+        firstCard.classList.add("matched");
+        secondCard.classList.add("matched");
+
+        scores[currentPlayer]++;
+        matches++;
+
+        renderScoreboard();
+        resetTurn();
+
+        if (matches === uniqueImages.length) {
+          endGame();
+        }
+
+      } else {
+        setTimeout(() => {
+          firstCard.classList.remove("flipped");
+          secondCard.classList.remove("flipped");
+          resetTurn();
+          nextPlayer();
+        }, 900);
+      }
+    }
+
+    function resetTurn() {
+      firstCard = null;
+      secondCard = null;
+      lockBoard = false;
+    }
+
+    function endGame() {
+      const winText = document.getElementById("win");
+      const maxScore = Math.max(...scores);
+
+      const winners = [];
+      for (let i = 0; i < scores.length; i++) {
+        if (scores[i] === maxScore) {
+          winners.push(`اللاعب ${i + 1}`);
+        }
+      }
+
+      winText.style.display = "block";
+
+      if (winners.length === 1) {
+        winText.textContent = `🎉 الفائز هو ${winners[0]} برصيد ${maxScore} نقطة`;
+      } else {
+        winText.textContent = `🤝 تعادل بين: ${winners.join(" - ")} برصيد ${maxScore} نقطة`;
+      }
+    }
+
+    startGame();
+  </script>
+
+</body>
+</html>
